@@ -8,6 +8,7 @@ apps/web/dist/
 # Backend
 apps/api/vendor/
 apps/api/.env
+apps/api/.phpunit.result.cache
 
 # Environment files
 .env
