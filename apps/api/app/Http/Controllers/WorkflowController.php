@@ -127,25 +127,43 @@ class WorkflowController extends Controller
             'completion_note' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $task = PickupTask::query()
-            ->where('id', $taskId)
-            ->where('volunteer_id', $request->user()->id)
-            ->with('rescueRequest')
-            ->firstOrFail();
+        $task = DB::transaction(function () use ($request, $taskId, $validated): PickupTask {
+            $task = PickupTask::query()
+                ->where('id', $taskId)
+                ->where('volunteer_id', $request->user()->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $task->status = $validated['status'];
-        $task->completion_note = $validated['completion_note'] ?? $task->completion_note;
-        if ($task->status === 'picked_up') $task->picked_up_at = now();
-        if ($task->status === 'delivered') $task->delivered_at = now();
-        if ($task->status === 'completed') $task->completed_at = now();
-        $task->save();
+            $task->completion_note = $validated['completion_note'] ?? $task->completion_note;
+            if ($validated['status'] === 'picked_up') {
+                $task->picked_up_at = now();
+            }
 
-        if ($task->status === 'completed') {
-            $task->rescueRequest->update(['status' => 'completed']);
-            $task->rescueRequest->donation()->update(['status' => 'completed']);
-        }
+            if (in_array($validated['status'], ['delivered', 'completed'], true)) {
+                $completedAt = now();
+                $task->status = 'completed';
+                $task->delivered_at = $completedAt;
+                $task->completed_at = $completedAt;
+                $task->save();
 
-        $this->log($request->user()->id, 'pickup_status_updated', $task, ['status' => $task->status]);
+                $rescueRequest = RescueRequest::query()
+                    ->lockForUpdate()
+                    ->findOrFail($task->rescue_request_id);
+                $donation = Donation::query()
+                    ->lockForUpdate()
+                    ->findOrFail($rescueRequest->donation_id);
+
+                $rescueRequest->update(['status' => 'completed']);
+                $donation->update(['status' => 'completed']);
+            } else {
+                $task->status = $validated['status'];
+                $task->save();
+            }
+
+            $this->log($request->user()->id, 'pickup_status_updated', $task, ['status' => $task->status]);
+
+            return $task;
+        });
 
         return response()->json([
             'message' => 'Pickup status updated.',
