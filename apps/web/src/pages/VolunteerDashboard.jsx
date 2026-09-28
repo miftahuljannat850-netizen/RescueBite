@@ -1,5 +1,5 @@
 import { Bike, Clock3, LoaderCircle, MapPin, PackageCheck, SearchX, Truck } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DashboardShell from "../components/dashboard/DashboardShell";
 import HeroCollage from "../components/dashboard/HeroCollage";
 import SummaryCard from "../components/dashboard/SummaryCard";
@@ -16,12 +16,16 @@ export default function VolunteerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const refreshTasks = useCallback(async () => {
+    return api.getVolunteerTasks();
+  }, []);
+
   useEffect(() => {
-    api.getVolunteerTasks()
+    refreshTasks()
       .then((response) => setTasks(response.data || []))
       .catch((requestError) => setError(requestError.message || "Unable to load pickup tasks."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshTasks]);
 
   async function updateTask(task, nextStatus) {
     try {
@@ -29,6 +33,8 @@ export default function VolunteerDashboard() {
         ? await api.acceptPickup(task.id)
         : await api.updatePickup(task.id, nextStatus);
       setTasks((current) => current.map((item) => item.id === task.id ? response.task : item));
+      const refreshed = await refreshTasks();
+      setTasks(refreshed.data || []);
     } catch (requestError) {
       setError(requestError.message || "Unable to update pickup task.");
     }
@@ -151,8 +157,9 @@ export default function VolunteerDashboard() {
 }
 
 function VolunteerTaskCard({ task, onUpdate }) {
-  const statusLabel =
-    task.status.charAt(0).toUpperCase() + task.status.slice(1);
+  const statusLabel = task.status === "completed"
+    ? "Completed / Delivered"
+    : task.status.charAt(0).toUpperCase() + task.status.slice(1);
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-3xl border border-[color:var(--color-rescue-border)] bg-[color:var(--color-rescue-bg)] shadow-md transition hover:-translate-y-1 hover:shadow-lg">
@@ -220,7 +227,6 @@ function VolunteerTaskCard({ task, onUpdate }) {
           {task.status === "accepted" && <button onClick={() => onUpdate(task, "en_route")} className="w-full rounded-xl bg-[#0F9F76] px-4 py-3 text-sm font-bold text-white">Start Route</button>}
           {task.status === "en_route" && <button onClick={() => onUpdate(task, "picked_up")} className="w-full rounded-xl bg-[#0F9F76] px-4 py-3 text-sm font-bold text-white">Mark Picked Up</button>}
           {task.status === "picked_up" && <button onClick={() => onUpdate(task, "delivered")} className="w-full rounded-xl bg-[#0F9F76] px-4 py-3 text-sm font-bold text-white">Mark Delivered</button>}
-          {task.status === "delivered" && <button onClick={() => onUpdate(task, "completed")} className="w-full rounded-xl bg-[#0F9F76] px-4 py-3 text-sm font-bold text-white">Complete Pickup</button>}
         </div>
       </div>
     </article>
