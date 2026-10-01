@@ -8,57 +8,33 @@ const LABELS = [
     label: "Food Rescued",
     unit: "meals",
     icon: <Leaf size={16} className="text-[#0F9F76]" />,
-    fallback: 1240,
   },
   {
     key: "waste",
     label: "Waste Prevented",
     unit: "kg",
     icon: <Trash2 size={16} className="text-[#0F9F76]" />,
-    fallback: 310,
   },
   {
     key: "co2",
     label: "CO₂ Avoided",
     unit: "kg",
     icon: <Wind size={16} className="text-[#0F9F76]" />,
-    fallback: 780,
   },
 ];
 
-function parseQty(raw) {
-  const num = typeof raw === "string" ? Number(raw.replace(/[^\d.]/g, "")) : Number(raw);
-  return Number.isFinite(num) && num > 0 ? num : null;
-}
-
-function computeMetrics(donations) {
-  const rescues = (Array.isArray(donations) ? donations : []).filter(
-    (d) => d.status === "collected" || d.status === "requested"
-  );
-  let meals = 0;
-  if (rescues.length) {
-    rescues.forEach((d) => {
-      const q = parseQty(d.quantity);
-      meals += q !== null ? q : 12;
-    });
-  }
-  const waste = Math.round(meals * 0.25);
-  const co2 = Math.round(meals * 0.64);
-  return { meals, waste, co2, rescues: rescues.length };
-}
-
-export default function EnvironmentalImpact({ donations = [], loading = false }) {
-  const { meals, waste, co2, rescues } = computeMetrics(donations);
-  const hasData = rescues > 0;
-  const display = hasData
-    ? { meals, waste, co2 }
-    : { meals: 1240, waste: 310, co2: 780 };
-
-  const totalLabel = hasData
-    ? `${rescues} donations delivered`
-    : loading
-      ? "Refreshing live data..."
-      : "Representative impact estimates";
+export default function EnvironmentalImpact({ impact, loading = false, error = false }) {
+  const display = {
+    meals: Number(impact?.meals) || 0,
+    waste: Number(impact?.waste) || 0,
+    co2: Number(impact?.co2) || 0,
+  };
+  const completedDonations = Number(impact?.completed_donations) || 0;
+  const totalLabel = loading
+    ? "Loading live impact..."
+    : error
+      ? "Live environmental impact is unavailable."
+      : `${completedDonations.toLocaleString()} completed donations`;
 
   return (
     <section className="mt-16">
@@ -77,6 +53,7 @@ export default function EnvironmentalImpact({ donations = [], loading = false })
           const value = display[meta.key];
           const goal = GOALS[meta.key];
           const pct = Math.min(100, Math.round((value / goal) * 100));
+          const valueLabel = loading ? "..." : error ? "—" : `${value.toLocaleString()} ${meta.unit}`;
           return (
             <div
               key={meta.key}
@@ -88,7 +65,7 @@ export default function EnvironmentalImpact({ donations = [], loading = false })
                   {meta.label}
                 </span>
                 <span className="text-xs font-black text-[#0F9F76]">
-                  {value.toLocaleString()} {meta.unit}
+                  {valueLabel}
                 </span>
               </div>
 
@@ -103,7 +80,7 @@ export default function EnvironmentalImpact({ donations = [], loading = false })
                   }`}
                   style={{ left: `${Math.max(pct, 6)}%` }}
                 >
-                  {pct}%
+                  {error ? "—" : `${pct}%`}
                 </span>
               </div>
             </div>
@@ -112,8 +89,8 @@ export default function EnvironmentalImpact({ donations = [], loading = false })
       </div>
 
       <p className="mt-4 text-xs text-[color:var(--color-rescue-text-muted)]">
-        Waste and CO₂ estimates use an average of 0.25 kg and 0.64 kg per rescued
-        meal respectively.
+        Waste and CO₂ are estimated from completed donations using standard
+        per-meal averages.
       </p>
     </section>
   );

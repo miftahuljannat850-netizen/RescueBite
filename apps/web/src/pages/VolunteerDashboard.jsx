@@ -8,6 +8,7 @@ import { api } from "../api/client";
 const statusClasses = {
   available: "bg-emerald-100 text-emerald-700 ring-emerald-600/20",
   assigned: "bg-amber-100 text-amber-700 ring-amber-600/20",
+  accepted: "bg-amber-100 text-amber-700 ring-amber-600/20",
   completed: "bg-sky-100 text-sky-700 ring-sky-600/20",
 };
 
@@ -43,24 +44,26 @@ export default function VolunteerDashboard() {
   const summary = useMemo(() => {
     if (tasks.length === 0) {
       return {
-        available: "—",
-        assigned: "—",
-        completed: "—",
-        total: "—",
+        available: "0",
+        accepted: "0",
+        completed: "0",
+        total: "0",
       };
     }
 
     const available = tasks.filter(
       (task) => task.status === "available",
     ).length;
-    const assigned = tasks.filter((task) => task.status === "assigned").length;
+    const accepted = tasks.filter(
+      (task) => task.status === "accepted" || task.status === "assigned",
+    ).length;
     const completed = tasks.filter(
       (task) => task.status === "completed",
     ).length;
 
     return {
       available: String(available),
-      assigned: String(assigned),
+      accepted: String(accepted),
       completed: String(completed),
       total: String(tasks.length),
     };
@@ -81,10 +84,10 @@ export default function VolunteerDashboard() {
             icon={<Bike size={22} />}
           />
           <SummaryCard
-            title="Assigned Tasks"
-            value={summary.assigned}
-            subtitle="On the route"
-            trend="Today"
+            title="Accepted Tasks"
+            value={summary.accepted}
+            subtitle="Assigned to you"
+            trend="Live"
             color="blue"
             icon={<Truck size={22} />}
           />
@@ -97,7 +100,7 @@ export default function VolunteerDashboard() {
             icon={<PackageCheck size={22} />}
           />
           <SummaryCard
-            title="Total Deliveries"
+            title="Total Tasks"
             value={summary.total}
             subtitle="Active queue"
             trend="View"

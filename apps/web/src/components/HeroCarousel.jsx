@@ -9,7 +9,7 @@ import collage8 from '../assets/charity/collage8.jpg';
 import collage9 from '../assets/charity/collage9.jpg';
 import collage10 from '../assets/charity/collage10.webp';
 
-export default function HeroCarousel() {
+export default function HeroCarousel({ approvedVolunteerCount }) {
   return (
     <div className="relative w-full h-[420px] rounded-[2.5rem] overflow-hidden bg-[#092B22] shadow-2xl flex flex-col lg:flex-row border border-[#164336]">
 
@@ -52,7 +52,9 @@ export default function HeroCarousel() {
           </div>
 
           <div className="text-xs text-stone-300 font-medium">
-            Join <span className="text-white font-bold">500+</span> Volunteers
+            {Number.isFinite(approvedVolunteerCount)
+              ? <>Join <span className="text-white font-bold">{approvedVolunteerCount.toLocaleString()}</span> Volunteers</>
+              : 'Join our volunteer community'}
           </div>
         </div>
       </div>

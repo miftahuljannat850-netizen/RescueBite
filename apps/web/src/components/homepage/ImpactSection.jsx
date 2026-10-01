@@ -18,30 +18,30 @@ const IMPACT_STATS = [
   {
     icon: <Package size={24} className="text-[#0F9F76]" />,
     label: "Active Rescues",
-    value: "142",
+    key: "active_rescues",
     accent: "bg-[color:var(--color-rescue-accent-soft)]",
   },
   {
     icon: <HeartHandshake size={24} className="text-blue-600" />,
     label: "Human Food",
-    value: "98",
+    key: "human_food",
     accent: "bg-blue-100 dark:bg-blue-900/30",
   },
   {
     icon: <TimerOff size={24} className="text-amber-600" />,
     label: "Expiring Soon",
-    value: "12",
+    key: "expiring_soon",
     accent: "bg-amber-100 dark:bg-amber-900/30",
   },
   {
     icon: <Leaf size={24} className="text-emerald-600" />,
     label: "Animal Shelters",
-    value: "31",
+    key: "animal_shelters",
     accent: "bg-emerald-100 dark:bg-emerald-900/30",
   },
 ];
 
-export default function ImpactSection() {
+export default function ImpactSection({ stats, loading, error, onRetry }) {
   return (
     <section className="mt-20">
       <div className="text-center mb-10">
@@ -54,6 +54,11 @@ export default function ImpactSection() {
         <p className="text-[color:var(--color-rescue-text-muted)] font-medium text-sm mt-2 max-w-2xl mx-auto">
           Community-powered food rescue impact across Dhaka.
         </p>
+        {error && (
+          <p role="status" className="mt-2 text-sm text-rose-600 dark:text-rose-300">
+            Live impact data is unavailable. <button onClick={onRetry} className="font-bold underline">Try again</button>
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
@@ -62,7 +67,9 @@ export default function ImpactSection() {
             key={stat.label}
             icon={stat.icon}
             label={stat.label}
-            value={stat.value}
+            value={loading ? "..." : error || !Number.isFinite(Number(stats?.[stat.key]))
+              ? "—"
+              : Number(stats[stat.key]).toLocaleString()}
             accent={stat.accent}
           />
         ))}

@@ -1,4 +1,4 @@
-import { clearSession } from "../lib/auth";
+import { clearSession, getStoredToken } from "../lib/auth";
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:18080/api").replace(/\/$/, "");
 
@@ -12,7 +12,7 @@ export class ApiError extends Error {
 }
 
 async function request(path, options = {}) {
-  const token = localStorage.getItem("rescuebite_token");
+  const token = getStoredToken();
   const headers = {
     Accept: "application/json",
     ...(options.body ? { "Content-Type": "application/json" } : {}),
@@ -47,7 +47,7 @@ async function request(path, options = {}) {
       ? Object.values(payload.errors).flat().find(Boolean)
       : null;
 
-    if (response.status === 401) {
+    if (response.status === 401 && token && getStoredToken() === token) {
       clearSession();
 
       if (window.location.pathname.startsWith("/admin")) {
@@ -132,6 +132,8 @@ export const api = {
   }),
 
   getDonations: () => request("/donations"),
+
+  getHomepageAnalytics: () => request("/homepage/analytics"),
 
   getMyDonations: () => request("/my-donations"),
 
