@@ -10,6 +10,7 @@ import CommunityHeroes from './components/homepage/CommunityHeroes';
 import EnvironmentalImpact from './components/homepage/EnvironmentalImpact';
 import ThemeToggle from './components/ThemeToggle';
 import { api } from './api/client';
+import { getStoredToken, getStoredUser } from './lib/auth';
 import { Pizza, Soup, Carrot, Home, Handshake, Bike, Backpack, Package, User, Search, X, ChevronDown, ShieldCheck } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -22,12 +23,6 @@ const RESCUE_CATEGORIES = [
   { id: 'volunteer-action', name: 'Express Delivery', icon: Bike, badge: 'Fast' }
 ];
 
-const CHART_DATA = [
-  { name: 'Delivered', value: 55, color: '#0F9F76' },
-  { name: 'Received by NGOs', value: 30, color: '#3B82F6' },
-  { name: 'Pending / Available', value: 15, color: '#F59E0B' },
-];
-
 export default function App() {
   const [activeTab, setActiveTab] = useState('food');
   const [filter, setFilter] = useState('All');
@@ -36,6 +31,9 @@ export default function App() {
   const [donations, setDonations] = useState([]);
   const [loadingDonations, setLoadingDonations] = useState(true);
   const [donationFetchError, setDonationFetchError] = useState('');
+  const [homepageAnalytics, setHomepageAnalytics] = useState(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState('');
   const [donationForm, setDonationForm] = useState({
     food: '',
     quantity: '',
@@ -73,6 +71,24 @@ export default function App() {
       setLoadingDonations(false);
     }
   }, []);
+
+  const fetchHomepageAnalytics = useCallback(async () => {
+    setLoadingAnalytics(true);
+    setAnalyticsError('');
+    try {
+      const payload = await api.getHomepageAnalytics();
+      setHomepageAnalytics(payload);
+    } catch (err) {
+      setAnalyticsError(err.message || 'Could not load live impact data.');
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => { fetchHomepageAnalytics(); }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchHomepageAnalytics]);
 
   useEffect(() => {
     if (activeTab !== 'food') return;
@@ -124,8 +140,8 @@ export default function App() {
     setDonationError('');
     setDonationSuccess('');
 
-    const user = JSON.parse(localStorage.getItem('rescuebite_user') || 'null');
-    const token = localStorage.getItem('rescuebite_token');
+    const user = getStoredUser();
+    const token = getStoredToken();
 
     if (!token || user?.role !== 'donor') {
       setDonationError('Please sign in with a donor account before posting food.');
@@ -275,7 +291,7 @@ export default function App() {
           <div className="max-w-7xl mx-auto px-6 py-8">
 
             <div className="mb-8">
-              <HeroCarousel />
+              <HeroCarousel approvedVolunteerCount={homepageAnalytics?.stats?.approved_volunteers} />
             </div>
 
             <UrgentRescue
@@ -405,7 +421,12 @@ export default function App() {
               </div>
             )}
 
-            <ImpactSection />
+            <ImpactSection
+              stats={homepageAnalytics?.stats}
+              loading={loadingAnalytics}
+              error={analyticsError}
+              onRetry={fetchHomepageAnalytics}
+            />
 
             <div className="mt-16 bg-[color:var(--color-rescue-surface)] p-6 md:p-8 rounded-[2rem] border border-[color:var(--color-rescue-border)] shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="max-w-md">
@@ -414,30 +435,52 @@ export default function App() {
                 <p className="text-[color:var(--color-rescue-text-muted)] text-sm mt-1">Here is the real-time breakdown of distributed human and animal surplus food across Dhaka today.</p>
               </div>
               <div className="h-56 w-full md:w-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={CHART_DATA}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {CHART_DATA.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+                {loadingAnalytics ? (
+                  <div role="status" className="flex h-full items-center justify-center text-sm text-[color:var(--color-rescue-text-muted)]">Loading live analytics...</div>
+                ) : analyticsError || !homepageAnalytics ? (
+                  <div role="status" className="flex h-full items-center justify-center text-center text-sm text-[color:var(--color-rescue-text-muted)]">Live chart data is unavailable.</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Delivered', value: homepageAnalytics.chart.delivered, color: '#0F9F76' },
+                          { name: 'Received by NGOs', value: homepageAnalytics.chart.received_by_ngos, color: '#3B82F6' },
+                          { name: 'Pending / Available', value: homepageAnalytics.chart.pending_available, color: '#F59E0B' },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {[
+                          { color: '#0F9F76' },
+                          { color: '#3B82F6' },
+                          { color: '#F59E0B' },
+                        ].map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </div>
 
-            <CommunityHeroes />
-            <EnvironmentalImpact donations={donations} loading={loadingDonations} />
+            <CommunityHeroes
+              volunteers={homepageAnalytics?.top_volunteers}
+              loading={loadingAnalytics}
+              error={Boolean(analyticsError)}
+            />
+            <EnvironmentalImpact
+              impact={homepageAnalytics?.impact}
+              loading={loadingAnalytics}
+              error={Boolean(analyticsError)}
+            />
             <HowItWorks />
 
           </div>

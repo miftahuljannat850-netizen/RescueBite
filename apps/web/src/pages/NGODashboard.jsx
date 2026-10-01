@@ -17,8 +17,12 @@ export default function NGODashboard() {
     setLoading(true);
     setError('');
     try {
-      const payload = await api.getDonations();
-      setDonations(Array.isArray(payload.data) ? payload.data : []);
+      const [donationPayload, requestPayload] = await Promise.all([
+        api.getDonations(),
+        api.getNgoRequests(),
+      ]);
+      setDonations(Array.isArray(donationPayload.data) ? donationPayload.data : []);
+      setRequests(Array.isArray(requestPayload.data) ? requestPayload.data : []);
     } catch (err) {
       setError(err.message || 'Could not load donations.');
     } finally {
@@ -29,13 +33,13 @@ export default function NGODashboard() {
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchDonations();
-      api.getNgoRequests().then((payload) => setRequests(payload.data || [])).catch(() => {});
     }, 0);
     return () => clearTimeout(timer);
   }, [fetchDonations]);
 
   const available = donations.filter(d => d.status === 'available').length;
   const pendingRequests = requests.filter((item) => item.status === 'pending').length;
+  const approvedRequests = requests.filter((item) => item.status === 'approved').length;
   const completedPickups = requests.filter((item) => item.status === 'completed').length;
 
   return (
@@ -46,7 +50,7 @@ export default function NGODashboard() {
         <SummaryCard title="Available Donations" value={String(available)} subtitle="Ready to request" trend="Live" color="emerald" icon={<Package size={22} />} />
         <SummaryCard title="Pending Requests" value={String(pendingRequests)} subtitle="View requests" trend="Live" color="blue" icon={<Handshake size={22} />} />
         <SummaryCard title="Completed Pickups" value={String(completedPickups)} subtitle="Delivered" trend="Live" color="violet" icon={<CheckCircle2 size={22} />} />
-        <SummaryCard title="Meals Received" value="Tracked" subtitle="From completed pickups" trend="Live" color="orange" icon={<Heart size={22} />} />
+        <SummaryCard title="Approved Requests" value={String(approvedRequests)} subtitle="Awaiting pickup" trend="Live" color="orange" icon={<Heart size={22} />} />
       </section>
 
       {loading && (

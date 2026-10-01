@@ -8,12 +8,14 @@ use App\Http\Controllers\NgoController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\WorkflowController;
 use App\Http\Controllers\AdminOperationsController;
+use App\Http\Controllers\HomepageAnalyticsController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::get('/donations', [DonationController::class, 'index']);
+Route::get('/homepage/analytics', HomepageAnalyticsController::class);
 
 Route::middleware('api.token')->group(function (): void {
     Route::middleware('role:admin')->prefix('admin')->group(function (): void {
