@@ -1,0 +1,109 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DEPLOY_USER: s20230204080
+  DEPLOY_HOST: 187.52.122.100
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Use PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql
+
+      - name: Install production PHP packages
+        working-directory: apps/api
+        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+      - name: Set up Node.js LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install frontend packages
+        run: npm ci
+
+      - name: Build React app
+        env:
+          VITE_API_URL: /api
+        run: npm run build:web
+
+      - name: Verify frontend build
+        run: test -f apps/api/public/app/index.html
+
+      - name: Pack Laravel release
+        run: |
+          test -f apps/api/vendor/autoload.php
+          test -f apps/api/public/app/index.html
+          tar -czf "$RUNNER_TEMP/release.tar.gz" \
+            --exclude='./.git' \
+            --exclude='*/.git' \
+            --exclude='./.env*' \
+            --exclude='*/.env*' \
+            --exclude='./node_modules' \
+            --exclude='*/node_modules' \
+            --exclude='./database/*.sqlite' \
+            --exclude='./database/*.sqlite3' \
+            --exclude='./storage/logs/*' \
+            --exclude='./storage/framework/cache/data/*' \
+            --exclude='./storage/framework/sessions/*' \
+            --exclude='./storage/framework/views/*' \
+            --exclude='./bootstrap/cache/*.php' \
+            -C apps/api .
+          tar -tzf "$RUNNER_TEMP/release.tar.gz" > "$RUNNER_TEMP/release-files.txt"
+          grep -Fqx './vendor/autoload.php' "$RUNNER_TEMP/release-files.txt"
+          grep -Fqx './public/app/index.html' "$RUNNER_TEMP/release-files.txt"
+          if grep -Eq '(^|/)\.env[^/]*(/|$)' "$RUNNER_TEMP/release-files.txt"; then
+            echo 'Release archive must not contain .env files or templates.' >&2
+            exit 1
+          fi
+          if grep -Eq '(^|/)node_modules(/|$)|(^|/)\.git(/|$)' "$RUNNER_TEMP/release-files.txt"; then
+            echo 'Release archive contains excluded generated files.' >&2
+            exit 1
+          fi
+
+      - name: Load deploy key and known host
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          test -n "$SSH_PRIVATE_KEY"
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/rescuebite_deploy"
+          chmod 600 "$HOME/.ssh/rescuebite_deploy"
+          ssh-keyscan -H "$DEPLOY_HOST" >> "$HOME/.ssh/known_hosts"
+
+      - name: Copy release to VPS
+        run: scp -i "$HOME/.ssh/rescuebite_deploy" -o IdentitiesOnly=yes "$RUNNER_TEMP/release.tar.gz" "${DEPLOY_USER}@${DEPLOY_HOST}:release.tar.gz"
+
+      - name: Deploy on VPS
+        run: |
+          ssh -i "$HOME/.ssh/rescuebite_deploy" -o IdentitiesOnly=yes "${DEPLOY_USER}@${DEPLOY_HOST}" 'bash -se' <<'REMOTE_SCRIPT'
+          set -euo pipefail
+          archive="$HOME/release.tar.gz"
+          test -f "$archive"
+          tar -tzf "$archive" > "$HOME/release-files.txt"
+          if grep -Eq '(^|/)\.env[^/]*(/|$)' "$HOME/release-files.txt"; then
+            echo 'Release archive must not contain .env files or templates.' >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/laravel"
+          tar -xzf "$archive" -C "$HOME/laravel" --no-same-owner
+          cd "$HOME/laravel"
+          chmod -R u+rwX storage bootstrap/cache
+          php artisan migrate --force
+          php artisan optimize
+          rm "$archive" "$HOME/release-files.txt"
+          REMOTE_SCRIPT

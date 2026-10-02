@@ -50,7 +50,7 @@ export default function AdminLogin() {
 
             <div className="relative">
               <img
-                src="/rescuebite-logo.svg"
+                src={`${import.meta.env.BASE_URL}rescuebite-logo.svg`}
                 alt="RescueBite"
                 className="h-10 w-auto brightness-0 invert"
               />

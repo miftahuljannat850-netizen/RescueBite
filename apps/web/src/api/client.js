@@ -1,6 +1,6 @@
 import { clearSession, getStoredToken } from "../lib/auth";
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:18080/api").replace(/\/$/, "");
+const API_BASE_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
 
 export class ApiError extends Error {
   constructor(message, status = 0, errors = null) {

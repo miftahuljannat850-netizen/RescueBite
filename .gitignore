@@ -4,6 +4,7 @@ apps/web/node_modules/
 
 # Frontend build
 apps/web/dist/
+apps/api/public/app/
 
 # Backend
 apps/api/vendor/

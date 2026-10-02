@@ -195,7 +195,7 @@ export default function App() {
       <nav className="bg-[color:var(--color-rescue-surface)]/80 backdrop-blur-md border-b border-[color:var(--color-rescue-border)] sticky top-0 z-50 hidden md:block">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('food')}>
-            <img src="/rescuebite-icon.svg" alt="RescueBite" className="h-9 w-auto group-hover:rotate-6 transition-transform duration-300" />
+            <img src={`${import.meta.env.BASE_URL}rescuebite-icon.svg`} alt="RescueBite" className="h-9 w-auto group-hover:rotate-6 transition-transform duration-300" />
             <span className="font-extrabold text-2xl tracking-tight text-[#0F9F76]">
               RescueBite
             </span>
@@ -269,7 +269,7 @@ export default function App() {
 
       <header className="bg-[color:var(--color-rescue-surface)]/80 backdrop-blur-md border-b border-[color:var(--color-rescue-border)] p-4 sticky top-0 z-50 flex items-center justify-between md:hidden">
         <div className="flex items-center gap-2" onClick={() => setActiveTab('food')}>
-          <img src="/rescuebite-icon.svg" alt="RescueBite" className="h-7 w-auto" />
+          <img src={`${import.meta.env.BASE_URL}rescuebite-icon.svg`} alt="RescueBite" className="h-7 w-auto" />
           <span className="font-extrabold text-lg text-[#0F9F76]">RescueBite</span>
         </div>
         <div className="flex items-center gap-2">
@@ -666,7 +666,7 @@ export default function App() {
           <div>
             <div className="flex items-center gap-2">
               <Link to="/" className="flex items-center focus:outline-none focus:ring-2 focus:ring-emerald-400 rounded">
-                <img src="/rescuebite-logo-dark.svg" alt="RescueBite" className="h-6 w-auto" />
+                <img src={`${import.meta.env.BASE_URL}rescuebite-logo-dark.svg`} alt="RescueBite" className="h-6 w-auto" />
                 <span className="font-extrabold text-white">RescueBite</span>
               </Link>
             </div>
