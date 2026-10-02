@@ -12,6 +12,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Get the code
         uses: actions/checkout@v4
@@ -44,10 +45,15 @@ jobs:
       - name: Verify frontend build
         run: test -f apps/api/public/app/index.html
 
+      - name: Stamp deployed commit
+        run: printf '%s\n' "$GITHUB_SHA" > apps/api/deployed-commit.txt
+
       - name: Pack Laravel release
         run: |
           test -f apps/api/vendor/autoload.php
           test -f apps/api/public/app/index.html
+          test -f apps/api/deployed-commit.txt
+
           tar -czf "$RUNNER_TEMP/release.tar.gz" \
             --exclude='./.git' \
             --exclude='*/.git' \
@@ -63,13 +69,18 @@ jobs:
             --exclude='./storage/framework/views/*' \
             --exclude='./bootstrap/cache/*.php' \
             -C apps/api .
+
           tar -tzf "$RUNNER_TEMP/release.tar.gz" > "$RUNNER_TEMP/release-files.txt"
+
           grep -Fqx './vendor/autoload.php' "$RUNNER_TEMP/release-files.txt"
           grep -Fqx './public/app/index.html' "$RUNNER_TEMP/release-files.txt"
+          grep -Fqx './deployed-commit.txt' "$RUNNER_TEMP/release-files.txt"
+
           if grep -Eq '(^|/)\.env[^/]*(/|$)' "$RUNNER_TEMP/release-files.txt"; then
             echo 'Release archive must not contain .env files or templates.' >&2
             exit 1
           fi
+
           if grep -Eq '(^|/)node_modules(/|$)|(^|/)\.git(/|$)' "$RUNNER_TEMP/release-files.txt"; then
             echo 'Release archive contains excluded generated files.' >&2
             exit 1
@@ -80,30 +91,55 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
           test -n "$SSH_PRIVATE_KEY"
+
           install -m 700 -d "$HOME/.ssh"
+
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/rescuebite_deploy"
           chmod 600 "$HOME/.ssh/rescuebite_deploy"
+
           ssh-keyscan -H "$DEPLOY_HOST" >> "$HOME/.ssh/known_hosts"
 
       - name: Copy release to VPS
-        run: scp -i "$HOME/.ssh/rescuebite_deploy" -o IdentitiesOnly=yes "$RUNNER_TEMP/release.tar.gz" "${DEPLOY_USER}@${DEPLOY_HOST}:release.tar.gz"
+        run: |
+          scp \
+            -i "$HOME/.ssh/rescuebite_deploy" \
+            -o IdentitiesOnly=yes \
+            "$RUNNER_TEMP/release.tar.gz" \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:release.tar.gz"
 
       - name: Deploy on VPS
         run: |
-          ssh -i "$HOME/.ssh/rescuebite_deploy" -o IdentitiesOnly=yes "${DEPLOY_USER}@${DEPLOY_HOST}" 'bash -se' <<'REMOTE_SCRIPT'
+          ssh \
+            -i "$HOME/.ssh/rescuebite_deploy" \
+            -o IdentitiesOnly=yes \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            'bash -se' <<'REMOTE_SCRIPT'
+
           set -euo pipefail
+
           archive="$HOME/release.tar.gz"
+
           test -f "$archive"
+
           tar -tzf "$archive" > "$HOME/release-files.txt"
+
           if grep -Eq '(^|/)\.env[^/]*(/|$)' "$HOME/release-files.txt"; then
             echo 'Release archive must not contain .env files or templates.' >&2
             exit 1
           fi
+
           mkdir -p "$HOME/laravel"
+
           tar -xzf "$archive" -C "$HOME/laravel" --no-same-owner
+
           cd "$HOME/laravel"
+
           chmod -R u+rwX storage bootstrap/cache
+
           php artisan migrate --force
+
           php artisan optimize
+
           rm "$archive" "$HOME/release-files.txt"
+
           REMOTE_SCRIPT
