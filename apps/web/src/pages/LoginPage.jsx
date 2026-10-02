@@ -43,7 +43,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded-[2rem] bg-white dark:bg-[color:var(--color-rescue-surface)] p-7 md:p-9 shadow-2xl">
         <div className="text-center">
           <Link to="/" className="inline-block focus:outline-none focus:ring-2 focus:ring-[#0F9F76]/40 rounded-lg">
-            <img src="/rescuebite-icon.svg" alt="RescueBite" className="mx-auto h-12 w-12" />
+            <img src={`${import.meta.env.BASE_URL}rescuebite-icon.svg`} alt="RescueBite" className="mx-auto h-12 w-12" />
           </Link>
           <h1 className="mt-3 text-3xl font-extrabold text-[#0D4436] dark:text-[color:var(--color-rescue-text)]">Welcome Back</h1>
           <p className="mt-1 text-sm text-stone-400 dark:text-[color:var(--color-rescue-text-muted)]">Sign in to RescueBite</p>

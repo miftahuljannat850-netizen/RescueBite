@@ -120,7 +120,7 @@ export default function Sidebar({ isOpen, setIsOpen, role = "donor" }) {
               className="flex items-center focus:outline-none focus:ring-2 focus:ring-emerald-400 rounded-lg"
             >
               <img
-                src="/rescuebite-icon.svg"
+                src={`${import.meta.env.BASE_URL}rescuebite-icon.svg`}
                 alt="RescueBite"
                 className="h-11 w-auto"
               />

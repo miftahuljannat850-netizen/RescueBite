@@ -2,8 +2,5 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => response()->json([
-    'name' => 'RescueBite API',
-    'checkpoint' => 2,
-    'status' => 'ok',
-]));
+Route::get('/{any?}', fn () => response()->file(public_path('app/index.html')))
+    ->where('any', '(?!api/|up$).*');

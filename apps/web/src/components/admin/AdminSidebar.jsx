@@ -38,7 +38,7 @@ export default function AdminSidebar({ open, onClose }) {
         <div className="flex h-20 items-center justify-between border-b border-[color:var(--color-rescue-border)] px-6">
           <div className="flex items-center gap-3">
             <Link to="/" className="flex items-center focus:outline-none focus:ring-2 focus:ring-emerald-400 rounded-lg">
-              <img src="/rescuebite-icon.svg" alt="RescueBite" className="h-10 w-10" />
+              <img src={`${import.meta.env.BASE_URL}rescuebite-icon.svg`} alt="RescueBite" className="h-10 w-10" />
             </Link>
             <div>
               <h1 className="text-lg font-black text-[#0F9F76]">RescueBite</h1>
